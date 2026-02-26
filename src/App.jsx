@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
-const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbxnrWL2IWP-fruqdXxuT7CoeZKnoFKlPCLyXAB1LWcxf04VgltRiYT9ABmExe2yWyKM/exec";
+const APPS_SCRIPT_URL = '/google-script';
+
 
 // ─── BITÁCORAS REGISTRY ──────────────────────────────────────────────────────
 const BITACORAS_REGISTRY = [
@@ -1802,8 +1802,7 @@ const FormView = ({ bitacora, onBack, onNotify }) => {
           fileName,
           formData: JSON.stringify(data),
           bitacoraData: {
-            numero: bitacora.numero,
-            norma: bitacora.norma,
+            numero: bitacora.norma,
             tituloNorma: bitacora.tituloNorma,
             nombre: bitacora.nombre,
             descripcion: bitacora.descripcion,
@@ -1812,6 +1811,7 @@ const FormView = ({ bitacora, onBack, onNotify }) => {
           },
         }),
       });
+      
       const result = await res.json();
       if (result.success) {
         onNotify("Bitácora guardada exitosamente en Google Drive", "success");
@@ -1819,11 +1819,13 @@ const FormView = ({ bitacora, onBack, onNotify }) => {
       } else {
         onNotify("Error al guardar: " + (result.error || "Error desconocido"), "error");
       }
-    } catch {
+    } catch (error) {
+      console.error('Error:', error);
       onNotify("Error de conexión con Google Drive", "error");
     }
   };
 
+  // ⚠️ SOLO UN RETURN, elimina el otro
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">

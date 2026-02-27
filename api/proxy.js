@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   
     try {
       // Construir la URL destino con los mismos query parameters
-      const targetUrl = `https://script.google.com/macros/s/AKfycbymmnSLTGE2B_g1syNECE3rF4e61Xi3a7q3OHIQQw7MjKeEcbpzPtSE9gXgNMHu6PNz/exec${req.url.replace('/api/proxy', '')}`;
+      const targetUrl = `https://script.google.com/macros/s/AKfycbyzZuYw3IBC6w8-02-zMlU6QB3lImGtiWslPX86vn_Yi6pLJfMmdRMMq9Z4MWt-QrLn/exec${req.url.replace('/api/proxy', '')}`;
       
       const response = await fetch(targetUrl, {
         method: req.method,

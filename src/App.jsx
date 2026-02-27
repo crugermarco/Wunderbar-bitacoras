@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
-const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
+const APPS_SCRIPT_URL = import.meta.env.PROD 
+  ? '/api/proxy' 
+  : '/google-script';
 // ─── BITÁCORAS REGISTRY ──────────────────────────────────────────────────────
 const BITACORAS_REGISTRY = [
   { tipo: "salida_emergencia", numero: "001", nombre: "Salida de Emergencia", descripcion: "Revisión de vías y salidas de emergencia", norma: "NOM-001-STPS-2008", tituloNorma: "Edificios, locales e instalaciones", frecuencia: "Semestral" },

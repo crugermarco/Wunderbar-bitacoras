@@ -3,7 +3,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const APPS_SCRIPT_URL = '/google-script';
 
-
 // ─── BITÁCORAS REGISTRY ──────────────────────────────────────────────────────
 const BITACORAS_REGISTRY = [
   { tipo: "salida_emergencia", numero: "001", nombre: "Salida de Emergencia", descripcion: "Revisión de vías y salidas de emergencia", norma: "NOM-001-STPS-2008", tituloNorma: "Edificios, locales e instalaciones", frecuencia: "Semestral" },
@@ -1628,6 +1627,36 @@ const NormaGroup = ({ norma, tituloNorma, bitacoras, onOpenBitacora }) => (
   </div>
 );
 
+// ─── FUNCIÓN PARA CALULAR FECHA LÍMITE ───────────────────────────────────────
+const calcularFechaLimite = (fechaBase, frecuencia) => {
+  if (!fechaBase) return null;
+  const fecha = new Date(fechaBase);
+  switch(frecuencia) {
+    case "Diario":
+    case "Cada uso":
+      fecha.setDate(fecha.getDate() + 1);
+      break;
+    case "Semanal":
+      fecha.setDate(fecha.getDate() + 7);
+      break;
+    case "Mensual":
+      fecha.setMonth(fecha.getMonth() + 1);
+      break;
+    case "Trimestral":
+      fecha.setMonth(fecha.getMonth() + 3);
+      break;
+    case "Semestral":
+      fecha.setMonth(fecha.getMonth() + 6);
+      break;
+    case "Anual":
+      fecha.setFullYear(fecha.getFullYear() + 1);
+      break;
+    default:
+      return null;
+  }
+  return fecha;
+};
+
 // ─── HISTORIAL VIEW ───────────────────────────────────────────────────────────
 const HistorialView = () => {
   const [registros, setRegistros] = useState([]);
@@ -1696,7 +1725,7 @@ const HistorialView = () => {
 };
 
 // ─── CONFIGURACION VIEW ───────────────────────────────────────────────────────
-const ConfiguracionView = ({ onNotify }) => {
+const ConfiguracionView = ({ onNotify, onFrecuenciasActualizadas }) => {
   const [listado, setListado] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(null);
@@ -1718,8 +1747,12 @@ const ConfiguracionView = ({ onNotify }) => {
         body: JSON.stringify({ action: "updateFrecuencia", norma: item["Número"], nombre: item["Nombre"], frecuencia: item["Frecuencia"] }),
       });
       const d = await res.json();
-      if (d.success) onNotify("Frecuencia actualizada correctamente", "success");
-      else onNotify("Error al actualizar: " + (d.error || "Error desconocido"), "error");
+      if (d.success) {
+        onNotify("Frecuencia actualizada correctamente", "success");
+        if (onFrecuenciasActualizadas) onFrecuenciasActualizadas();
+      } else {
+        onNotify("Error al actualizar: " + (d.error || "Error desconocido"), "error");
+      }
     } catch {
       onNotify("Error de conexión", "error");
     } finally {
@@ -1825,7 +1858,6 @@ const FormView = ({ bitacora, onBack, onNotify }) => {
     }
   };
 
-  // ⚠️ SOLO UN RETURN, elimina el otro
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -1880,44 +1912,104 @@ export default function App() {
   const [filterNorma, setFilterNorma] = useState("");
   const [filterFrecuencia, setFilterFrecuencia] = useState("");
   const [bitacoras, setBitacoras] = useState(BITACORAS_REGISTRY);
+  const [historial, setHistorial] = useState([]);
 
   const notify = useCallback((message, type = "info") => {
     setToast({ message, type, id: Date.now() });
   }, []);
 
-  useEffect(() => {
+  const cargarFrecuencias = useCallback(() => {
     fetch(`${APPS_SCRIPT_URL}?action=getListado`)
       .then((r) => r.json())
       .then((d) => {
         if (d.success && d.data) {
           setBitacoras((prev) =>
             prev.map((b) => {
-              const match = d.data.find((row) => {
-                const n = (row["Nombre"] || "").toLowerCase();
-                return n.includes(b.nombre.toLowerCase().slice(0, 8));
-              });
+              const match = d.data.find((row) => 
+                row["Número"] === b.norma && row["Nombre"] === b.nombre
+              );
               return match ? { ...b, frecuencia: match["Frecuencia"] || b.frecuencia } : b;
             })
           );
         }
       })
       .catch(() => {});
+  }, []);
 
-    const ts = Date.now();
-    fetch(`${APPS_SCRIPT_URL}?action=verificarPendientes&_=${ts}`)
+  const cargarHistorial = useCallback(() => {
+    fetch(`${APPS_SCRIPT_URL}?action=getConcentrado`)
       .then((r) => r.json())
       .then((d) => {
-        if (d.success && d.pendientes && d.pendientes.length > 0) {
-          setPendientes(d.pendientes);
-          setShowPendientes(true);
-        }
+        if (d.success && d.data) setHistorial(d.data);
       })
       .catch(() => {});
   }, []);
 
+  const verificarPendientes = useCallback(() => {
+    const hoy = new Date();
+    const pendientesCalculados = [];
+    
+    bitacoras.forEach(bitacora => {
+      const registrosBitacora = historial.filter(r => 
+        r["Número"] === bitacora.norma && r["Nombre"] === bitacora.nombre
+      );
+      
+      if (registrosBitacora.length === 0) {
+        pendientesCalculados.push({
+          norma: bitacora.norma,
+          tituloNorma: bitacora.tituloNorma,
+          nombre: bitacora.nombre,
+          descripcion: bitacora.descripcion,
+          frecuencia: bitacora.frecuencia,
+          ultimaRealizacion: 'Nunca',
+          diasDesdeUltima: null
+        });
+      } else {
+        const ultimoRegistro = registrosBitacora.sort((a, b) => 
+          new Date(b["Fecha de realizado"].split('/').reverse().join('-')) - 
+          new Date(a["Fecha de realizado"].split('/').reverse().join('-'))
+        )[0];
+        
+        const fechaUltima = new Date(ultimoRegistro["Fecha de realizado"].split('/').reverse().join('-'));
+        const fechaLimite = calcularFechaLimite(fechaUltima, bitacora.frecuencia);
+        
+        if (fechaLimite && hoy > fechaLimite) {
+          const diasRetraso = Math.floor((hoy - fechaLimite) / (1000 * 60 * 60 * 24));
+          pendientesCalculados.push({
+            norma: bitacora.norma,
+            tituloNorma: bitacora.tituloNorma,
+            nombre: bitacora.nombre,
+            descripcion: bitacora.descripcion,
+            frecuencia: bitacora.frecuencia,
+            ultimaRealizacion: ultimoRegistro["Fecha de realizado"],
+            diasDesdeUltima: diasRetraso
+          });
+        }
+      }
+    });
+    
+    setPendientes(pendientesCalculados);
+    if (pendientesCalculados.length > 0) setShowPendientes(true);
+  }, [bitacoras, historial]);
+
+  useEffect(() => {
+    cargarFrecuencias();
+    cargarHistorial();
+  }, [cargarFrecuencias, cargarHistorial]);
+
+  useEffect(() => {
+    if (bitacoras.length > 0 && historial.length > 0) {
+      verificarPendientes();
+    }
+  }, [bitacoras, historial, verificarPendientes]);
+
   const openBitacora = (bitacora) => {
     setActiveBitacora(bitacora);
     setView("form");
+  };
+
+  const handleFrecuenciasActualizadas = () => {
+    cargarFrecuencias();
   };
 
   const filteredBitacoras = bitacoras.filter((b) => {
@@ -2006,7 +2098,7 @@ export default function App() {
         ) : view === "configuracion" ? (
           <div className="space-y-6">
             <h1 className="text-xl font-bold text-slate-100">Configuración de Frecuencias</h1>
-            <ConfiguracionView onNotify={notify} />
+            <ConfiguracionView onNotify={notify} onFrecuenciasActualizadas={handleFrecuenciasActualizadas} />
           </div>
         ) : (
           <div className="space-y-8">

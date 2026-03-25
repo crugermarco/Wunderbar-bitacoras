@@ -63,7 +63,7 @@ const SignaturePad = ({ onSave, onClear }) => {
     ctx.beginPath();
     ctx.moveTo(lastPos.current.x, lastPos.current.y);
     ctx.lineTo(pos.x, pos.y);
-    ctx.strokeStyle = "#e2e8f0";
+    ctx.strokeStyle = "#0a0a0a";
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -92,11 +92,11 @@ const SignaturePad = ({ onSave, onClear }) => {
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-widest">Firma Digital del Responsable</h3>
-      <div className="relative rounded-xl border border-slate-700 overflow-hidden bg-slate-900/60">
+      <div className="relative rounded-xl border border-slate-700 overflow-hidden bg-gray-400 rounded-xl">
         <canvas
           ref={canvasRef}
           width={800}
-          height={160}
+          height={460}
           className="w-full cursor-crosshair touch-none block"
           onMouseDown={startDraw}
           onMouseMove={draw}

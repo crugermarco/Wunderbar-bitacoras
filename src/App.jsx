@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
-const APPS_SCRIPT_URL = import.meta.env.PROD 
-  ? '/api/proxy' 
-  : '/google-script';
+const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
 // ─── BITÁCORAS REGISTRY ──────────────────────────────────────────────────────
 const BITACORAS_REGISTRY = [
   { tipo: "salida_emergencia", numero: "001", nombre: "Salida de Emergencia", descripcion: "Revisión de vías y salidas de emergencia", norma: "NOM-001-STPS-2008", tituloNorma: "Edificios, locales e instalaciones", frecuencia: "Semestral" },
@@ -1263,27 +1261,28 @@ const BitacoraCompresor = ({ onSubmit }) => {
   );
 };
 
-// ─── BITÁCORA: MANTENIMIENTO COMPRESOR ────────────────────────────────────────
-const ITEMS_MTO_COMPRESOR = [
-  "¿El equipo esta rotulado o adecuadamente identificado?",
-  "¿El equipo cuenta con placa de datos?",
-  "¿La pintura del equipo se encuentra en buen estado?",
-  "¿El equipo está libre de corrosión, roturas, abolladuras o golpes?",
-  "¿Existe orden y limpieza alrededor del equipo?",
-  "¿El acceso al equipo se encuentra libre de obstrucciones?",
-  "¿La purga del equipo opera correctamente?",
-  "¿El manómetro se encuentra en buen estado?",
-  "¿El equipo se encuentra libre de fugas visibles?",
-  "¿La válvula de seguridad o relevo operan correctamente?",
-  "¿Las válvulas de bloqueo funcionan adecuadamente?",
-  "¿Las conexiones al equipo se observan en buen estado?",
-  "¿El equipo cuenta con la señalización adecuada?",
-  "¿Existe alguna vibración o ruido inusual?",
-];
-
+//BITACORA DE COMPRESOR-----------------------------------------------------------
 const BitacoraMtoCompresor = ({ onSubmit }) => {
   const [equipo, setEquipo] = useState({ nombre: "", tag: "", numero_stps: "" });
-  const [checks, setChecks] = useState(() => ITEMS_MTO_COMPRESOR.map(() => ({ cumple: "", obs: "", acciones: "" })));
+  const [checks, setChecks] = useState(() => {
+    const items = [
+      "¿El equipo esta rotulado o adecuadamente identificado?",
+      "¿El equipo cuenta con placa de datos?",
+      "¿La pintura del equipo se encuentra en buen estado?",
+      "¿El equipo está libre de corrosión, roturas, abolladuras o golpes?",
+      "¿Existe orden y limpieza alrededor del equipo?",
+      "¿El acceso al equipo se encuentra libre de obstrucciones?",
+      "¿La purga del equipo opera correctamente?",
+      "¿El manómetro se encuentra en buen estado?",
+      "¿El equipo se encuentra libre de fugas visibles?",
+      "¿La válvula de seguridad o relevo operan correctamente?",
+      "¿Las válvulas de bloqueo funcionan adecuadamente?",
+      "¿Las conexiones al equipo se observan en buen estado?",
+      "¿El equipo cuenta con la señalización adecuada?",
+      "¿Existe alguna vibración o ruido inusual?"
+    ];
+    return items.map((item) => ({ descripcion: item, cumple: "", obs: "", acciones: "" }));
+  });
   const [condicion, setCondicion] = useState("");
   const [recomendaciones, setRecomendaciones] = useState("");
   const [tecnico, setTecnico] = useState({ nombre: "", certificacion: "", supervisor: "" });
@@ -1294,7 +1293,7 @@ const BitacoraMtoCompresor = ({ onSubmit }) => {
 
   const si_count = checks.filter((c) => c.cumple === "si").length;
   const no_count = checks.filter((c) => c.cumple === "no").length;
-  const pct = Math.round((si_count / ITEMS_MTO_COMPRESOR.length) * 100);
+  const pct = Math.round((si_count / checks.length) * 100);
 
   const handleSubmit = () => {
     if (!equipo.nombre) return alert("Ingrese el nombre del equipo");
@@ -1322,18 +1321,18 @@ const BitacoraMtoCompresor = ({ onSubmit }) => {
           </tr>
         </thead>
         <tbody>
-          {ITEMS_MTO_COMPRESOR.map((item, i) => (
+          {checks.map((item, i) => (
             <tr key={i} className="hover:bg-slate-800/30">
               <TD><span className="text-slate-500 text-xs font-bold">{i + 1}</span></TD>
-              <TD><span className="text-slate-300 text-xs">{item}</span></TD>
+              <TD><span className="text-slate-300 text-xs">{item.descripcion}</span></TD>
               <TD className="text-center">
-                <input type="radio" name={`cumple_${i}`} checked={checks[i].cumple === "si"} onChange={() => updateCheck(i, "cumple", "si")} className="w-4 h-4 accent-emerald-500" />
+                <input type="radio" name={`cumple_${i}`} checked={item.cumple === "si"} onChange={() => updateCheck(i, "cumple", "si")} className="w-4 h-4 accent-emerald-500" />
               </TD>
               <TD className="text-center">
-                <input type="radio" name={`cumple_${i}`} checked={checks[i].cumple === "no"} onChange={() => updateCheck(i, "cumple", "no")} className="w-4 h-4 accent-rose-500" />
+                <input type="radio" name={`cumple_${i}`} checked={item.cumple === "no"} onChange={() => updateCheck(i, "cumple", "no")} className="w-4 h-4 accent-rose-500" />
               </TD>
-              <TD><CellInput value={checks[i].obs} onChange={(e) => updateCheck(i, "obs", e.target.value)} placeholder="Observaciones" /></TD>
-              <TD><CellInput value={checks[i].acciones} onChange={(e) => updateCheck(i, "acciones", e.target.value)} placeholder="Acciones correctivas" /></TD>
+              <TD><CellInput value={item.obs} onChange={(e) => updateCheck(i, "obs", e.target.value)} placeholder="Observaciones" /></TD>
+              <TD><CellInput value={item.acciones} onChange={(e) => updateCheck(i, "acciones", e.target.value)} placeholder="Acciones correctivas" /></TD>
             </tr>
           ))}
         </tbody>
